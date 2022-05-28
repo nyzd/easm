@@ -119,7 +119,7 @@ impl Lexer {
 
         while let Some(line) = lines.next() {
             // split by word
-            let mut splited = line.split(" ");
+            let mut splited = line.split_whitespace();
 
             while let Some(word) = splited.next() {
                 match Op::from_str(word) {
@@ -205,6 +205,8 @@ fn main() {
 
     let mut lexer = Lexer::new();
     lexer.lex(Box::leak(source)).unwrap();
+
+    println!("{:?}", lexer);
 
     let mut parser = Parser::new(lexer.result);
     let result = parser.parse().unwrap();
