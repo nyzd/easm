@@ -206,8 +206,6 @@ fn main() {
     let mut lexer = Lexer::new();
     lexer.lex(Box::leak(source)).unwrap();
 
-    println!("{:?}", lexer);
-
     let mut parser = Parser::new(lexer.result);
     let result = parser.parse().unwrap();
 
