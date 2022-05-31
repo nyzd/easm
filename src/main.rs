@@ -3,17 +3,7 @@ use std::{
     error::Error,
     fmt::{Debug, Display},
     fs,
-    str::FromStr,
 };
-
-pub fn opcode_parser<Code, Parse>(opcode: Code, value: Code) -> Parse
-where
-    Code: Display,
-    Parse: FromStr,
-    <Parse as FromStr>::Err: Debug,
-{
-    format!("{}{}", opcode, value).parse::<Parse>().unwrap()
-}
 
 #[derive(Debug, Clone)]
 pub enum Op {
