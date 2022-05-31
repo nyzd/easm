@@ -26,36 +26,65 @@ pub enum Op {
     DUP1,
     SWAP1,
     VALUE(String),
+    STOP,
+    ADD,
+    MUL,
+    SUB,
+    DIV,
+    SDIV,
+    MOD,
+    SMOD,
+    ADDMOD,
+    MULMOD,
+    EXP,
+    SIGNEXTEND,
+    GT,
+    SLT,
+    SGT,
+    EQ,
+    ISZERO,
+    AND,
+    OR,
+    XOR,
+    NOT,
+    BYTE,
+    SHL,
+    SHR,
+    SAR,
+    SHA3,
+    ADDRESS,
+    BALANCE,
 }
 
 impl Op {
-    pub fn from_str(str: &'static str) -> Result<Self, Box<dyn Error>> {
+    pub fn from_str(str: &'static str) -> Result<(Self, &str), Box<dyn Error>> {
         match str {
-            "MSTORE" | "mstore" => Ok(Self::MSTORE),
-            "MLOAD" | "mload" => Ok(Self::MLOAD),
-            "CREATE" | "create" => Ok(Self::CREATE),
-            "EXTCODECOPY" | "extcodecopy" => Ok(Self::EXTCODECOPY),
-            "PUSH1" | "push1" => Ok(Self::PUSH1),
-            "POP" | "pop" => Ok(Self::POP),
-            "DUP1" | "dup1" => Ok(Self::DUP1),
-            "SWAP1" | "swap1" => Ok(Self::SWAP1),
+            "MSTORE" | "mstore" => Ok((Self::MSTORE, "52")),
+            "MLOAD" | "mload" => Ok((Self::MLOAD, "51")),
+            "CREATE" | "create" => Ok((Self::CREATE, "f0")),
+            "EXTCODECOPY" | "extcodecopy" => Ok((Self::EXTCODECOPY, "3c")),
+            "PUSH1" | "push1" => Ok((Self::PUSH1, "60")),
+            "POP" | "pop" => Ok((Self::POP, "50")),
+            "DUP1" | "dup1" => Ok((Self::DUP1, "80")),
+            "SWAP1" | "swap1" => Ok((Self::SWAP1, "90")),
+            "STOP" | "stop" => Ok((Self::STOP, "00")),
+            "ADD" | "add" => Ok((Self::ADD, "01")),
+            "MUL" | "mul" => Ok((Self::MUL, "02")),
+            "SUB" | "sub" => Ok((Self::SUB, "03")),
+            "DIV" | "div" => Ok((Self::DIV, "04")),
+            "SDIV" | "sdiv" => Ok((Self::SDIV, "05")),
+            "MOD" | "mod" => Ok((Self::MOD, "06")),
+            "SMOD" | "smod" => Ok((Self::SMOD, "07")),
+            "ADDMOD" | "addmod" => Ok((Self::ADDMOD, "08")),
+            "MULMOD" | "mulmod" => Ok((Self::MULMOD, "09")),
+            "EXP" | "exp" => Ok((Self::EXP, "0a")),
+            "SIGNEXTEND" | "signextend" => Ok((Self::SIGNEXTEND, "0b")),
+            "GT" | "gt" => Ok((Self::GT, "11")),
+            "SLT" | "slt" => Ok((Self::SLT, "12")),
+            "SGT" | "sgt" => Ok((Self::SGT, "13")),
+            "EQ" | "eq" => Ok((Self::EQ, "14")),
 
-            _ => Ok(Self::VALUE(str.to_string())),
-        }
-    }
-
-    fn as_opcode(&self) -> u32 {
-        match self {
-            Self::MSTORE => 52,
-            Self::MLOAD => 51,
-            Self::CREATE => 0xF0,
-            Self::EXTCODECOPY => 0x3C,
-            Self::PUSH1 => 60,
-            Self::POP => 50,
-            Self::DUP1 => 80,
-            Self::SWAP1 => 90,
-
-            _ => 0,
+            _ => Ok((Self::VALUE(str.to_string()), "0")),
         }
     }
 }
@@ -103,12 +132,12 @@ impl Error for LexError {
 }
 
 #[derive(Debug, Clone)]
-struct Lexer {
+struct Lexer<'a> {
     /// Result
-    result: Vec<Op>,
+    result: Vec<(Op, &'a str)>,
 }
 
-impl Lexer {
+impl<'a> Lexer<'a> {
     pub fn new() -> Self {
         Self { result: vec![] }
     }
@@ -135,13 +164,13 @@ impl Lexer {
 }
 
 #[derive(Debug)]
-struct Parser {
+struct Parser<'a> {
     cursor: usize,
-    tokens: Vec<Op>,
+    tokens: &'a Vec<(Op, &'a str)>,
 }
 
-impl Iterator for Parser {
-    type Item = Op;
+impl<'a> Iterator for Parser<'a> {
+    type Item = (Op, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {
         let result = match self.tokens.get(self.cursor) {
@@ -155,42 +184,20 @@ impl Iterator for Parser {
     }
 }
 
-impl Parser {
-    pub fn new(tokens: Vec<Op>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: &'a Vec<(Op, &'a str)>) -> Self {
         Self { cursor: 0, tokens }
     }
 
-    fn get_token(&self, index: usize) -> Option<&Op> {
-        self.tokens.get(index)
-    }
-
-    fn parse(&mut self) -> Result<Vec<u32>, Box<dyn Error>> {
-        let mut result: Vec<u32> = vec![];
+    fn parse(&mut self) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut result: Vec<String> = vec![];
 
         while let Some(token) = self.next() {
             match token {
-                Op::PUSH1 => {
-                    let next_token = match self.get_token(self.cursor) {
-                        Some(val) => val,
-                        None => panic!("PANICED"),
-                    };
-
-                    let value = match next_token {
-                        Op::VALUE(val) => val.trim_start_matches("0x"),
-
-                        _ => panic!("PANIC {:?}", next_token),
-                    };
-
-                    let code = opcode_parser(Op::PUSH1.as_opcode().to_string(), value.to_string());
-
-                    result.push(code);
-
-                    self.next();
-                }
+                (Op::VALUE(value), "0") => result.push(value.trim_start_matches("0x").to_string()),
 
                 _ => {
-                    result.push(token.as_opcode());
-                    self.next();
+                    result.push(token.1.to_string());
                 }
             }
         }
@@ -206,10 +213,8 @@ fn main() {
     let mut lexer = Lexer::new();
     lexer.lex(Box::leak(source)).unwrap();
 
-    let mut parser = Parser::new(lexer.result);
+    let mut parser = Parser::new(&lexer.result);
     let result = parser.parse().unwrap();
 
-    let joined: Vec<String> = result.iter().map(|n| n.to_string()).collect();
-
-    println!("{}", joined.join("").to_string());
+    println!("{}", result.join("").to_string());
 }
