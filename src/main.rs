@@ -44,6 +44,8 @@ pub enum Op {
     SHA3,
     ADDRESS,
     BALANCE,
+    CALLVALUE,
+    RETURN,
 }
 
 impl Op {
@@ -73,6 +75,8 @@ impl Op {
             "SLT" | "slt" => Ok((Self::SLT, "12")),
             "SGT" | "sgt" => Ok((Self::SGT, "13")),
             "EQ" | "eq" => Ok((Self::EQ, "14")),
+            "CALLVALUE" | "callvalue" => Ok((Self::CALLVALUE, "34")),
+            "RETURN" | "return" => Ok((Self::RETURN, "f3")),
 
             _ => Ok((Self::VALUE(str.to_string()), "0")),
         }
