@@ -138,18 +138,13 @@ impl<'a> Lexer<'a> {
 
     /// Start lexing
     fn lex(&mut self, source: &'static str) -> Result<(), Box<dyn Error>> {
-        let mut lines = source.lines();
+        let mut splited = source.split_whitespace();
 
-        while let Some(line) = lines.next() {
-            // split by word
-            let mut splited = line.split_whitespace();
+        while let Some(word) = splited.next() {
+            match Op::from_str(word) {
+                Ok(op) => self.result.push(op),
 
-            while let Some(word) = splited.next() {
-                match Op::from_str(word) {
-                    Ok(op) => self.result.push(op),
-
-                    Err(error) => panic!("{}", error),
-                }
+                Err(error) => panic!("{}", error),
             }
         }
 
